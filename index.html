@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Oasis Photos</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            background-color: #f4f4f4;
+            background-image: url(https://images.pexels.com/photos/1421903/pexels-photo-1421903.jpeg);
+            background-size: cover;
+            background-position: center;
+            padding: 20px;
+            color: #fff;
+        }
+
+        h1 {
+            color: white;
+            font-size: 60px;
+            text-align: center;
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        input[type="file"],
+        input[type="text"],
+        button {
+            padding: 10px;
+            font-size: 15px;
+            border: 2px solid #ccc;
+            border-radius: 15px;
+            margin: 10px;
+            transition: 0.2s ease;
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            color: whitesmoke;
+        }
+
+        input[type="file"]:hover,
+        input[type="text"]:hover,
+        button:hover {
+            padding: 15px;
+            cursor: pointer;
+        }
+
+        .image-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .image-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px;
+            border-radius: 10px;
+            border: 0px solid #000000;
+            width: 200px;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            position: relative;
+            transition: all 0.2s ease;
+            color: #333;
+        }
+        .image-card:hover {
+            transition: 0.2s ease;
+            transform:scale(1.1)
+        }
+
+        .image-card img {
+            max-width: 100%;
+            border-radius: 8px;
+            transition: 0.2s ease-in-out;
+        }
+
+        .tag {
+            font-size: 13px;
+            color: #666;
+            margin-top: 6px;
+        }
+
+        .fade-out {
+            opacity: 0;
+            transform: scale(0.8);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        select {
+            margin-top: 8px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: none;
+            background-color: #eee;
+            font-size: 14px;
+            color: #333;
+            outline: none;
+            transition: 0.3s ease;
+        }
+
+        select:hover {
+            background-color: #ddd;
+        }
+
+        option {
+            background-color: white;
+            color: #000;
+            transition: 0.2s ease;
+        }
+
+        .search-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .search-section input {
+            width: 300px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>📁 Oasis Photos</h1>
+
+    <!-- 🔍 Google Image Search -->
+    <div class="search-section">
+        <form action="https://www.google.com/search" method="get" target="_blank">
+            <input type="text" name="q" placeholder="Search images on Google">
+            <input type="hidden" name="tbm" value="isch">
+            <button type="submit">🔍 Search</button>
+        </form>
+    </div>
+
+    <!-- 📁 Upload / Tag / Local Search -->
+    <div class="controls">
+        <input type="file" id="fileInput" accept="image/*" multiple>
+        <input type="text" id="tagInput" placeholder="Enter tag (optional)">
+        <button onclick="clearGallery()">🗑️ Delete All</button>
+        <br>
+        <input type="text" id="searchBox" oninput="filterGallery()" placeholder="🔎 Search by tag...">
+    </div>
+
+    <!-- 📸 Image Gallery -->
+    <div class="image-gallery" id="gallery"></div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const tagInput = document.getElementById('tagInput');
+        const gallery = document.getElementById('gallery');
+        const searchBox = document.getElementById('searchBox');
+
+        window.onload = function () {
+            loadGallery();
+        };
+
+        function loadGallery() {
+            gallery.innerHTML = '';
+            const savedImages = JSON.parse(localStorage.getItem('photoGallery')) || [];
+            savedImages.forEach(image => {
+                addImageToGallery(image.dataUrl, image.tag);
+            });
+        }
+
+        fileInput.addEventListener('change', function (event) {
+            const files = event.target.files;
+            let savedImages = JSON.parse(localStorage.getItem('photoGallery')) || [];
+
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const dataUrl = e.target.result;
+                    const tag = tagInput.value.trim() || "untagged";
+                    savedImages.push({ dataUrl, tag });
+                    localStorage.setItem('photoGallery', JSON.stringify(savedImages));
+                    addImageToGallery(dataUrl, tag);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            fileInput.value = '';
+            tagInput.value = '';
+        });
+
+        function addImageToGallery(dataUrl, tag) {
+            const card = document.createElement('div');
+            card.className = 'image-card';
+            card.setAttribute('data-tag', tag.toLowerCase());
+
+            card.innerHTML = `
+        <img src="${dataUrl}" alt="User Image">
+        <div class="tag">#${tag}</div>
+        <select onchange="handleAction(this, '${dataUrl}', this.closest('.image-card'))">
+          <option selected disabled>⚙️ Options</option>
+          <option value="view">👁️ View</option>
+          <option value="download">⬇️ Download</option>
+          <option value="delete">❌ Delete</option>
+        </select>
+      `;
+
+            gallery.appendChild(card);
+        }
+
+        function handleAction(select, dataUrl, card) {
+            const action = select.value;
+            switch (action) {
+                case 'view':
+                    window.open(dataUrl, '_blank');
+                    break;
+                case 'download':
+                    const link = document.createElement('a');
+                    link.href = dataUrl;
+                    link.download = 'photo.jpg';
+                    link.click();
+                    break;
+                case 'delete':
+                    deleteImage(card, dataUrl);
+                    break;
+            }
+            select.selectedIndex = 0; // Reset to "Options"
+        }
+
+        function deleteImage(card, imgSrc) {
+            card.classList.add('fade-out');
+            setTimeout(() => {
+                let savedImages = JSON.parse(localStorage.getItem('photoGallery')) || [];
+                savedImages = savedImages.filter(img => img.dataUrl !== imgSrc);
+                localStorage.setItem('photoGallery', JSON.stringify(savedImages));
+                card.remove();
+            }, 500);
+        }
+
+        function clearGallery() {
+            if (confirm("Delete all saved images?")) {
+                localStorage.removeItem('photoGallery');
+                gallery.innerHTML = '';
+            }
+        }
+
+        function filterGallery() {
+            const keyword = searchBox.value.toLowerCase();
+            const cards = document.querySelectorAll('.image-card');
+            cards.forEach(card => {
+                const tag = card.getAttribute('data-tag');
+                if (tag.includes(keyword)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
